@@ -1,0 +1,46 @@
+name: Terraform
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install sops and age
+        run: |
+          sudo apt-get install -y age
+          SOPS_VERSION=3.9.4
+          curl -fsSL "https://github.com/getsops/sops/releases/download/v${SOPS_VERSION}/sops-v${SOPS_VERSION}.linux.amd64" -o sops
+          chmod +x sops && sudo mv sops /usr/local/bin/sops
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Decrypt secrets into environment
+        env:
+          SOPS_AGE_KEY: ${{ secrets.AGE_SECRET_KEY }}
+        run: sops -d secrets.sops.env >> $GITHUB_ENV
+
+      - name: Terraform Init
+        working-directory: terraform
+        run: terraform init
+
+      - name: Terraform Plan
+        working-directory: terraform
+        run: terraform plan -no-color
+        continue-on-error: ${{ github.event_name == 'pull_request' }}
+
+      - name: Terraform Apply
+        working-directory: terraform
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: terraform apply -auto-approve -no-color

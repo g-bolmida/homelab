@@ -1,0 +1,11 @@
+---
+ansible_user: "{{ hardening_admin_user }}"
+
+hardening_admin_user: gbolmida
+hardening_admin_pubkey: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJDPUf8UGl5jg797p4jqXBHSzfqjopfHt5zwiAkk+Mq9 gbolmida@geo-nix"
+
+hardening_trusted_ssh_cidrs:
+  - "{{ lookup('env', 'TRUSTED_SSH_CIDR') }}"
+  - 192.168.1.0/24
+
+teleport_proxy_address: bolmida.cloud

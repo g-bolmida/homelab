@@ -1,0 +1,7 @@
+---
+# Run this once per new host, only one that needs root before locked down.
+- name: Bootstrap admin user and baseline hardening
+  hosts: all
+  gather_facts: true
+  roles:
+    - role: hardening

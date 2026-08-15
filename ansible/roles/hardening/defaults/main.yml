@@ -1,0 +1,5 @@
+---
+hardening_admin_user: gbolmida
+hardening_admin_pubkey: ""
+hardening_lockdown: false
+hardening_trusted_ssh_cidrs: []

@@ -1,0 +1,3 @@
+---
+plugin: hetzner.hcloud.hcloud
+label_selector: "env=homelab"

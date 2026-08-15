@@ -1,0 +1,8 @@
+---
+- name: Run bootstrap tasks
+  ansible.builtin.import_tasks: bootstrap.yml
+  when: not hardening_lockdown
+
+- name: Run lockdown tasks
+  ansible.builtin.import_tasks: lockdown.yml
+  when: hardening_lockdown

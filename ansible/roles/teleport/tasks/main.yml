@@ -1,0 +1,63 @@
+---
+- name: Check whether teleport is already installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/teleport
+  register: teleport_bin_check
+
+# Teleport does not publish packages under rocky/
+- name: Install teleport via the cluster's own install script
+  ansible.builtin.shell: |
+    set -euo pipefail
+    curl -fsSL "https://{{ teleport_proxy_address }}/scripts/install.sh" | \
+      sed \
+        -e '/^  centos | rhel | rocky | almalinux | amzn)$/i\
+        rocky | almalinux)\
+          install_via_yum "rhel"\
+          ;;' \
+        -e 's/^  centos | rhel | rocky | almalinux | amzn)$/  centos | rhel | amzn)/' \
+      | bash
+  args:
+    executable: /bin/bash
+  when: not teleport_bin_check.stat.exists
+  changed_when: true
+
+- name: Check whether teleport is already configured
+  ansible.builtin.stat:
+    path: /etc/teleport.yaml
+  register: teleport_config_stat
+
+# Requires an active `tsh login` against the cluster, mints a new join token every run
+- name: Mint a Teleport join token
+  ansible.builtin.command: >
+    tctl tokens add --type=node --ttl={{ teleport_join_ttl }} --format=json
+  delegate_to: localhost
+  become: false
+  when: not teleport_config_stat.stat.exists
+  register: teleport_token_raw
+  changed_when: false
+  no_log: true
+
+- name: Parse minted token
+  ansible.builtin.set_fact:
+    teleport_token_info: "{{ teleport_token_raw.stdout | from_json }}"
+  when: not teleport_config_stat.stat.exists
+  no_log: true
+
+- name: Generate /etc/teleport.yaml
+  ansible.builtin.command: >
+    /usr/local/bin/teleport configure
+    --roles={{ teleport_roles }}
+    --token={{ teleport_token_info.token }}
+    --proxy={{ teleport_proxy_address }}:443
+    --node-name={{ inventory_hostname }}
+    --node-labels=hostname={{ inventory_hostname }}
+    -o file
+  when: not teleport_config_stat.stat.exists
+  changed_when: true
+  no_log: true
+
+- name: Enable and start teleport
+  ansible.builtin.service:
+    name: teleport
+    state: started
+    enabled: true

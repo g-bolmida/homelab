@@ -1,0 +1,4 @@
+---
+teleport_proxy_address: ""
+teleport_join_ttl: 5m
+teleport_roles: node

@@ -1,0 +1,16 @@
+---
+- name: Lock down root SSH
+  hosts: all
+  become: true
+  gather_facts: false
+  vars:
+    hardening_lockdown: true
+  roles:
+    - role: hardening
+
+- name: Install and join Teleport cluster
+  hosts: all
+  become: true
+  gather_facts: false
+  roles:
+    - role: teleport

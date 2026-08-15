@@ -1,0 +1,18 @@
+---
+- name: Disable root SSH login
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^#?PermitRootLogin"
+    line: "PermitRootLogin no"
+    validate: "sshd -t -f %s"
+  notify: restart sshd
+
+- name: Keep fail2ban ignoreip in sync with trusted SSH sources
+  ansible.builtin.lineinfile:
+    path: /etc/fail2ban/jail.d/sshd.local
+    regexp: "^ignoreip ="
+    line: "ignoreip = 127.0.0.1/8 ::1 {{ hardening_trusted_ssh_cidrs | join(' ') }}"
+  notify: Restart fail2ban
+
+- name: Flush handlers so root login is disabled before this play ends
+  ansible.builtin.meta: flush_handlers

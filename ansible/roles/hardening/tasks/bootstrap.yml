@@ -1,0 +1,101 @@
+---
+- name: Set the system hostname
+  ansible.builtin.hostname:
+    name: "{{ inventory_hostname }}"
+
+- name: Create admin user
+  ansible.builtin.user:
+    name: "{{ hardening_admin_user }}"
+    shell: /bin/bash
+    state: present
+
+- name: Authorize admin user's SSH key
+  ansible.posix.authorized_key:
+    user: "{{ hardening_admin_user }}"
+    key: "{{ hardening_admin_pubkey }}"
+    path: "/home/{{ hardening_admin_user }}/.ssh/authorized_keys"
+    state: present
+
+# NOPASSWD to ensure there is no blocking of playbooks
+- name: Grant admin user passwordless sudo
+  ansible.builtin.copy:
+    dest: "/etc/sudoers.d/{{ hardening_admin_user }}"
+    content: "{{ hardening_admin_user }} ALL=(ALL) NOPASSWD:ALL\n"
+    mode: "0440"
+    validate: "visudo -cf %s"
+
+- name: Disable SSH password authentication
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    validate: "sshd -t -f %s"
+  loop:
+    - { regexp: "^#?PasswordAuthentication", line: "PasswordAuthentication no" }
+    - { regexp: "^#?PermitEmptyPasswords", line: "PermitEmptyPasswords no" }
+    - { regexp: "^#?X11Forwarding", line: "X11Forwarding no" }
+    - { regexp: "^#?MaxAuthTries", line: "MaxAuthTries 3" }
+    - { regexp: "^#?ClientAliveInterval", line: "ClientAliveInterval 300" }
+    - { regexp: "^#?ClientAliveCountMax", line: "ClientAliveCountMax 2" }
+  notify: restart sshd
+
+- name: Install EPEL repository
+  ansible.builtin.package:
+    name: epel-release
+    state: present
+
+- name: Install fail2ban and dnf-automatic
+  ansible.builtin.package:
+    name:
+      - fail2ban
+      - dnf-automatic
+    state: present
+    update_cache: true
+
+- name: Enable firewalld
+  ansible.builtin.service:
+    name: firewalld
+    state: started
+    enabled: true
+
+- name: Allow SSH through firewalld
+  ansible.posix.firewalld:
+    service: ssh
+    permanent: true
+    immediate: true
+    state: enabled
+
+- name: Configure fail2ban for sshd
+  ansible.builtin.copy:
+    dest: /etc/fail2ban/jail.d/sshd.local
+    content: |
+      [sshd]
+      enabled = true
+      backend = systemd
+      bantime = 1h
+      findtime = 10m
+      maxretry = 5
+      ignoreip = 127.0.0.1/8 ::1 {{ hardening_trusted_ssh_cidrs | join(' ') }}
+    mode: "0644"
+  notify: Restart fail2ban
+
+- name: Enable fail2ban
+  ansible.builtin.service:
+    name: fail2ban
+    state: started
+    enabled: true
+
+- name: Configure dnf-automatic for security updates
+  ansible.builtin.lineinfile:
+    path: /etc/dnf/automatic.conf
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  loop:
+    - { regexp: "^upgrade_type", line: "upgrade_type = security" }
+    - { regexp: "^apply_updates", line: "apply_updates = yes" }
+
+- name: Enable dnf-automatic-install timer
+  ansible.builtin.service:
+    name: dnf-automatic-install.timer
+    state: started
+    enabled: true
