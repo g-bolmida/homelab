@@ -1,7 +1,7 @@
 # homelab
 
 ## Note:
-This repo is a work in progress, I am migrating my original 3 node stack (Auriga, Nostromo, and a Linode cloud instance) running a portainer cluster with docker-compose as well as my teleport auth cluster. The end goal is a 4-node cross-site K3s cluster using wireguard for edge cloud node.
+This repo is a work in progress, I am migrating my original 3 node stack (Auriga, Nostromo, and a Linode cloud instance) running a portainer cluster with docker-compose as well as my teleport auth cluster. The end goal is a entirely GitOps managed 4-node cross-site K3s cluster using wireguard for edge cloud node. I will be migrating all manual changes I've done to the teleport cluster over the years to as close to 100% IaC coverage as I can get using the teleport terraform provider.
 
 #### Compute
 - *CHEYENNE* - Hetzner Cloud Instance - 2CPU & 4GB RAM
