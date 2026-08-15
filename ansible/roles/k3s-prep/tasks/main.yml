@@ -1,0 +1,15 @@
+---
+- name: Install kernel-modules-extra for latest available kernel
+  ansible.builtin.dnf:
+    name: kernel-modules-extra
+    state: latest
+  register: kmodextra_install
+
+- name: Reboot to load new kernel modules directory
+  ansible.builtin.reboot:
+  when: kmodextra_install is changed
+
+- name: Ensure br_netfilter is loaded
+  community.general.modprobe:
+    name: br_netfilter
+    state: present

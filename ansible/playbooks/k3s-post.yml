@@ -1,0 +1,10 @@
+---
+# Run this once the k3s cluster is up.
+# Needs the k3s inventory for the server/agent groups:
+#   ansible-playbook -i k3s.yml playbooks/k3s-post.yml
+- name: Post-install k3s cluster tasks
+  hosts: server
+  become: true
+  gather_facts: false
+  roles:
+    - role: k3s-post

@@ -1,0 +1,50 @@
+---
+- name: Check teleport is already configured
+  ansible.builtin.stat:
+    path: /etc/teleport.yaml
+  register: teleport_config_stat
+
+- name: Fail if teleport isn't set up yet
+  ansible.builtin.fail:
+    msg: "/etc/teleport.yaml not found - run playbooks/site.yml first"
+  when: not teleport_config_stat.stat.exists
+
+- name: Add kubernetes_service to teleport config
+  ansible.builtin.blockinfile:
+    path: /etc/teleport.yaml
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - kubernetes_service"
+    block: |
+      kubernetes_service:
+        enabled: yes
+        kubeconfig_file: {{ k3s_post_kubeconfig_file }}
+        labels:
+          cluster: "{{ cluster_context }}"
+  register: teleport_kube_config
+
+- name: Mint a Teleport join token for the kube role
+  ansible.builtin.command: >
+    tctl tokens add --type=kube --ttl={{ k3s_post_join_ttl }} --format=json
+  delegate_to: localhost
+  become: false
+  register: kube_token_raw
+  changed_when: false
+  no_log: true
+
+- name: Parse minted token
+  ansible.builtin.set_fact:
+    kube_token_info: "{{ kube_token_raw.stdout | from_json }}"
+  no_log: true
+
+- name: Point teleport at the new join token
+  ansible.builtin.replace:
+    path: /etc/teleport.yaml
+    regexp: '^(\s*token_name:\s*).*$'
+    replace: '\g<1>{{ kube_token_info.token }}'
+  register: teleport_token_update
+  no_log: true
+
+- name: Restart teleport to join with the kube role
+  ansible.builtin.service:
+    name: teleport
+    state: restarted
+  when: teleport_kube_config is changed or teleport_token_update is changed

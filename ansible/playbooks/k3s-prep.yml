@@ -1,0 +1,8 @@
+---
+# Run this once per host before running the k3s playbook
+- name: Run tasks to prep for k3s
+  hosts: all
+  become: true
+  gather_facts: true
+  roles:
+    - role: k3s-prep
