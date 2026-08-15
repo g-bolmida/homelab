@@ -25,7 +25,7 @@ e.g.
 
 - If adding a new node on a different network than currently used, ensure you add the network to the allowed networks for fail2ban or your playbook will lock you out.
 
-- Before running `playbooks/site.yml` playbook, ensure you run `tsh login --proxy=bolmida.cloud` first or teleport will be unable to make a new join token.
+- Before running `playbooks/site.yml` or `playbooks/k3s-post.yml` playbooks, ensure you run `tsh login --proxy=bolmida.cloud` first or teleport will be unable to make a new join token.
 
 ## Secrets Management
 
