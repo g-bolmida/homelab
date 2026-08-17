@@ -44,7 +44,7 @@ resource "teleport_provision_token" "terraform_ci_github" {
     github = {
       allow = [
         {
-          repository = "gbolmida/homelab"
+          repository = "g-bolmida/homelab"
         }
       ]
     }
